@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify, g
-from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_httpauth import HTTPBasicAuth
 import re
+from db import db, User  # Import from db package
 
 app = Flask(__name__)
 
@@ -11,33 +11,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = r'sqlite:///C:/Users/balaj/db/mydb.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
+db.init_app(app)
 bcrypt = Bcrypt(app)
 auth = HTTPBasicAuth()
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
-# Database Model
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
-    name = db.Column(db.String(100), nullable=False)  # Added 'name' field
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'name': self.name  # Return name in response
-        }
-
 # Create database tables before the first request
 @app.before_request
 def create_tables():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
 
 def validate_email(email):
     """Validate email format using regex."""
@@ -72,7 +57,7 @@ def register():
             return jsonify({'error': 'No input data provided'}), 400
 
         # Validate required fields
-        required_fields = ['username', 'email', 'password', 'name']  # Added 'name' to required fields
+        required_fields = ['username', 'email', 'password', 'name']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'{field} is required'}), 400
@@ -84,7 +69,7 @@ def register():
         # Check if username or email already exists
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already exists'}), 409
-        
+
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'Email already exists'}), 409
 
@@ -94,7 +79,7 @@ def register():
             username=data['username'],
             email=data['email'],
             password=hashed_password,
-            name=data['name']  # Save the name field
+            name=data['name']
         )
         
         db.session.add(new_user)
@@ -127,7 +112,7 @@ def get_users():
         'users': [user.to_dict() for user in users]
     }), 200
 
-# Get a single user by id
+# Get a single user by ID
 @app.route('/users/<int:user_id>', methods=['GET'])
 @auth.login_required
 def get_user(user_id):
