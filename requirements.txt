@@ -1,0 +1,9 @@
+
+SQLAlchemy==1.4.49
+Flask-SQLAlchemy==2.5.1
+Flask-Bcrypt==0.7.1
+Flask-HTTPAuth==4.4.0
+pytest==6.2.5
+Flask
+gunicorn
+werkzeug==2.0.3
